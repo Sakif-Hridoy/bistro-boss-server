@@ -32,6 +32,11 @@ async function run() {
 
 
 
+    app.get('/users',async(req,res)=>{
+      const result = await userCollection.find().toArray();
+      res.send(result)
+    })
+
 
     app.post('/users',async(req,res)=>{
       const user = req.body;
@@ -47,6 +52,27 @@ async function run() {
     })
 
 
+    app.delete("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await userCollection.deleteOne(query);
+      res.send(result);
+      console.log(result);
+    });
+
+
+    app.patch('/users/admin/:id',async(req,res)=>{
+      const id = req.params.id;
+      const filter = {_id:new ObjectId(id)};
+      const updatedDoc = {
+        $set:{
+          role:'admin'
+        }
+      }
+      const result = await userCollection.updateOne(filter,updatedDoc);
+      console.log(result)
+      res.send(result)
+    })
 
 
 
@@ -68,6 +94,7 @@ async function run() {
       const result = await cartCollection.find(query).toArray();
       res.send(result)
     })
+
 
 
     app.post("/carts",async(req,res)=>{
