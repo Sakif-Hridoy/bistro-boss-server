@@ -1,5 +1,8 @@
 const express = require('express')
 const cors = require('cors')
+const jwt = require('jsonwebtoken')
+require('dotenv').config()
+
 const app = express()
 const port = process.env.PORT || 5000;
 
@@ -31,8 +34,55 @@ async function run() {
     const cartCollection = client.db("bistroDb").collection("carts")
 
 
+    app.post('/jwt',async(req,res)=>{
+      const user = req.body;
+      console.log(user);
+      const token = jwt.sign(user,process.env.ACCESS_TOKEN_SECRET,{expiresIn: '1h'})
+      console.log(token)
+      res.send({token});
+      // res
+      // .cookie('token',token,{
+      //   httpOnly:true,
+      //   secure:true,
+      //   sameSite:'none'
+      // })
+      // .send({success:true})
+    })
 
-    app.get('/users',async(req,res)=>{
+
+    // midd
+
+    const verifyToken = async(req,res,next)=>{
+      console.log('inside verify',req.headers.authorization)
+      // const token = req.headers;
+      // console.log('from middleware',token)
+      // if(!token){
+      //   return res.status(401).send({
+      //     message:'not authorized'
+            //   })
+
+      if(!req.headers.authorization){
+        return res.status(401).send({message:'forbidden access'})
+      }
+      const token = req.headers.authorization.split(' ')[1]
+
+      jwt.verify(token,process.env.ACCESS_TOKEN_SECRET,(err,decoded)=>{
+        if(err){
+          return res.status(401).send({message:'forbidden access'})
+        }
+        req.decoded = decoded;
+        next()
+      })
+
+      // if(!token){
+      // return res.status(401).send({message:'forbidden access'})
+      // }
+      }
+
+
+
+    app.get('/users',verifyToken,async(req,res)=>{
+      console.log(req.headers)
       const result = await userCollection.find().toArray();
       res.send(result)
     })
@@ -113,6 +163,10 @@ async function run() {
       res.send(result);
       console.log(result);
     });
+
+
+   
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
