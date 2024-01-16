@@ -3,6 +3,7 @@ const cors = require('cors')
 const jwt = require('jsonwebtoken')
 require('dotenv').config()
 const app = express()
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
 const port = process.env.PORT || 5000;
 
 app.use(express());
@@ -31,6 +32,7 @@ async function run() {
     const menuCollection = client.db("bistroDb").collection("menu")
     const userCollection = client.db("bistroDb").collection("users")
     const cartCollection = client.db("bistroDb").collection("carts")
+    const paymentCollection = client.db("bistroDb").collection("payments")
 
 
     app.post('/jwt',async(req,res)=>{
@@ -135,6 +137,37 @@ async function run() {
       res.send(result);
       console.log(result);
     });
+
+
+
+
+    // payment intent
+
+    app.post('/create-payment-intent',async(req,res)=>{
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      console.log(amount,'amount inside intent')
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount:amount,
+        currency:'usd',
+        payment_method_types:['card']
+      });
+      res.send({
+        clientSecret:paymentIntent.client_secret
+      })
+    })
+
+  app.post('/payments',async(req,res)=>{
+    const payment = req.body;
+    const paymentResult = await paymentCollection.insertOne(payment)
+    console.log('payment info',payment)
+    res.send(paymentResult)
+  })  
+
+
+
+
+
 
 
     app.patch('/users/admin/:id',verifyToken,verifyAdmin,async(req,res)=>{
