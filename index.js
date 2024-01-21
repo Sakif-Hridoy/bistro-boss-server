@@ -181,37 +181,61 @@ async function run() {
 
     // stats
 
-  app.get('/admin-stats',verifyToken,verifyAdmin, async(req,res)=>{
-    // get total users or customers
-    const users = await userCollection.estimatedDocumentCount();
-    // get total products/foods
-    const menuItems = await menuCollection.estimatedDocumentCount()
-    // total orders related to payments
-    const orders = await paymentCollection.estimatedDocumentCount()
+    app.get("/admin-stats", verifyToken, verifyAdmin, async (req, res) => {
+      // get total users or customers
+      const users = await userCollection.estimatedDocumentCount();
+      // get total products/foods
+      const menuItems = await menuCollection.estimatedDocumentCount();
+      // total orders related to payments
+      const orders = await paymentCollection.estimatedDocumentCount();
 
-    // revenue
-    // const payments = await paymentCollection.find().toArray();
-    // const revenue = payments.reduce((total,payment)=> total + payment.price,0)
-    // const cost = 150;
-    // const loss = revenue-cost;
-    // const profit = (loss*100)/ revenue;
+      // revenue
+      // const payments = await paymentCollection.find().toArray();
+      // const revenue = payments.reduce((total,payment)=> total + payment.price,0)
+      // const cost = 150;
+      // const loss = revenue-cost;
+      // const profit = (loss*100)/ revenue;
 
-    const result = await paymentCollection.aggregate([
-      {
-        $group :{
-          _id:null,
-          totalRevenue:{
-            $sum:'$price'
+      const result = await paymentCollection
+        .aggregate([
+          {
+            $group: {
+              _id: null,
+              totalRevenue: {
+                $sum: "$price",
+              },
+            },
+          },
+        ])
+        .toArray();
+      console.log(result);
+      const revenue = result.length > 0 ? Math.round(result[0].totalRevenue ): 0;
+
+      res.send({ users, menuItems, orders, revenue });
+    });
+
+
+    // using aggregate pipeline
+
+    app.get('/order-stats',async(req,res)=>{
+      const result = await paymentCollection.aggregate([
+        {
+          $unwind: '$menuItemIds'
+        },
+        {
+          $lookup:{
+            from:'menu',
+            localField:'menuItemIds',
+            foreignField:'_id',
+            as: 'menuItems'
           }
-        }
-      }
-    ]).toArray();  
-console.log(result)
-    const revenue = result.length > 0 ? result[0].totalRevenue : 0;
-
-    res.send({users,menuItems,orders,revenue})
-  })
-
+        },
+        {
+          $unwind:'$menuItems'
+        },
+      ]).toArray()
+      res.send(result)
+    })
 
 
 
