@@ -1,11 +1,17 @@
 const express = require("express");
 const cors = require("cors");
+const formData = require('form-data');
+const Mailgun = require('mailgun.js');
+const mailgun = new Mailgun(formData);
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const app = express();
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const port = process.env.PORT || 7000;
-
+const mg = mailgun.client({
+	username: 'api',
+	key: process.env.MAIL_GUN_API_KEY,
+});
 app.use(express());
 app.use(cors());
 app.use(express.json());
@@ -158,6 +164,23 @@ async function run() {
         },
       };
       const deleteResult = await cartCollection.deleteMany(query);
+
+      // send mail with mailgun
+      mg.messages
+	.create(process.env.MAIL_SENDING_DOMAIN, {
+		from: "Mailgun Sandbox <postmaster@sandboxed6a9355f9dd42168e1b55978bdecf00.mailgun.org>",
+		to: ["sakifhridoy@gmail.com"],
+		subject: "bistro boss order confirm",
+		text: "Testing some Mailgun awesomness!",
+    html:`
+    <div><h2>Thank You for your order</h2></div>
+    <h4>Transaction ID:<strong>${payment.transactionId}</strong> </h4>
+    
+    `
+	})
+	.then(msg => console.log(msg)) // logs response data
+	.catch(err => console.log(err));
+
       res.send({ paymentResult, deleteResult });
     });
 
